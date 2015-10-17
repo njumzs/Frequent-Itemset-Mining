@@ -10,7 +10,8 @@ import sys,os
 import time
 DEFAULT_SOURECE_DIR=''
 DEFALUT_HASHTREE_DEGREE = 6
-
+ITEM_NUM = 11
+MINSUP = 0.144
 
 class Node:
     def __init__(self):
@@ -29,7 +30,7 @@ class Apriori:
         self.candidate_set = []
         self.freq_counter = {} #dict
         self.k = 1 # frequent k-itemset
-        self.freq_set = {} #list<list> [k] save the k+1 freq_item
+        self.freq_set = [] #list<list> [k] save the k+1 freq_item
 
     def set_candiate_set(self,candidate_set):
         self.candidate_set = candidate_set
@@ -41,7 +42,18 @@ class Apriori:
                 item_raw_list = content_line.split()[1:]
                 item_list = [index for index,value in emuerate(item_raw_list) if int(value.strip()) == 1]
                 #Record the index of value
-                self.transactions_list.append(item_list)
+                self.transactions_list.append(item_list) # Look like List<List>
+
+    def get_freq1_itemset(self):
+        item_counter = [0]*ITEM_NUM
+        for item_list in self.transactions_list:
+            for item in item_list:
+                item_counter[int(item)] += 1
+        single_freq_set = []
+        for index, num in enumerate(item_counter):
+            if num*1.0/len(self.transactions_list) > MINSUP:
+                single_freq_set.append(index)
+        return single_freq_set.sort()
 
     def construct_hashtree(self,candidate_set,degree=DEFALUT_HASHTREE_DEGREE): # candidate set like List<list>
         root = Node()
@@ -64,7 +76,7 @@ class Apriori:
         return root
 
 
-    def explore_hashtree(self,transaction,root,prefix_list=[],degree=DEFALUT_HASHTREE_DEGREE): #recursive invokation
+    def __explore_hashtree(self,transaction,root,prefix_list=[],degree=DEFALUT_HASHTREE_DEGREE): #recursive invokation
         level,length = len(prefix_list),len(transaction) # level,length is set 0 at first
         gen_transaction = transaction
         for item in  transaction[:len(transaction)-self.k+level+1]:
@@ -80,8 +92,21 @@ class Apriori:
                 else:
                     self.freq_counter[gen_prefix_list] += 1
                 return
-            explore_hashtree(gen_transaction,current_child,gen_prefix_list,degree)
+            self.__explore_hashtree(gen_transaction,current_child,gen_prefix_list,degree)
         return
+
+
+
+    def support_counting(self):
+        #invoke explore_hashtree
+        #########################
+        #########################
+        #########################
+        #########################
+        #########################
+        #########################
+        #########################
+        #########################
 
     def generate_candinate_set(self,candinate_set):
         length = len(candidate_set)
@@ -109,12 +134,21 @@ class Apriori:
         temp_set = candidate_set
         k = len(candidate_set[0])
         for index, item_set in enumerate(candidate_set):
+            candidate_flag = True
             for sub_index,item in enumerate(item_set):
                 single_list = []
-                single_list.append[item]
-                sub_set = list(set(single_list).difference(set(item_set))).sort()
-                if not sub_set in self.freq_set:
+                single_list.append(item)
+                sub_set = list(set(item_set).difference(set(single_list))).sort()
+                if not sub_set in self.freq_set[k-1]:
+                    candidate_flag = False
                     break
+            if not candidate_flag:
+                temp_set.remove(item_set)
+                continue
+
+
+
+
 
 
 
