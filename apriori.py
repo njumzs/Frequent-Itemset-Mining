@@ -85,29 +85,40 @@ class Apriori:
 
 
     def __explore_hashtree(self,transaction,root,prefix_list=[],degree=DEFALUT_HASHTREE_DEGREE): #recursive invokation
-        print '*************************hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh**************************'
+       # print '*************************hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh**************************'
         level,length = len(prefix_list)+1,len(transaction) # level,length is set 0 at first
         gen_transaction = transaction[:]
         for item in  transaction[:len(transaction)-self.k+level]:
             current_child = root.children_list.get(int(item)%degree,[])
             if not current_child:
+                print '----------------'
+                print item
                 #break
                 continue
             gen_prefix_list = prefix_list[:]
             gen_transaction.remove(item) #Pop the 1st element always
+            #print 'transaction'
+            #print transaction[:len(transaction)-self.k+level]
+            #print 'gen_transaction'
+            #print gen_transaction
             gen_prefix_list.append(item)
+           # print 'prefix_list'
+           # print gen_prefix_list
             if current_child.leaf_node:
-             #   print gen_prefix_list
-             #   print current_child.index
+            #    print 'hash_tree'
+            #    print gen_prefix_list
+            #    print 'index'
+            #    print current_child.index
                 if gen_prefix_list in current_child.index:
                     gen_prefix_tuple = tuple(gen_prefix_list)
-                    #print gen_prefix_tuple
                     if self.freq_counter.get(gen_prefix_tuple,-1)==-1:#key 可以是list吗
-                        self.freq_counter[gen_prefix_tuple] = 0
+                        self.freq_counter[gen_prefix_tuple] = 1
                     else:
                         self.freq_counter[gen_prefix_tuple] += 1
-                return
-            self.__explore_hashtree(gen_transaction,current_child,gen_prefix_list,degree)
+                gen_prefix_list.remove(item)
+            else:
+                if gen_transaction:
+                    self.__explore_hashtree(gen_transaction,current_child,gen_prefix_list,degree)
         return
 
 
@@ -116,9 +127,11 @@ class Apriori:
         #invoke explore_hashtree
         cout = 0
         for transaction in self.transactions_list:
-            print cout
-            print transaction
+           # print cout
+           # print '*********************'
+          #  print transaction
             self.__explore_hashtree(transaction,root)
+           # print self.freq_counter
             cout += 1
 
     def generate_candinate_set(self,freq_set):
