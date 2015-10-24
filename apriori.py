@@ -13,6 +13,7 @@ DEFALUT_HASHTREE_DEGREE = 6
 ITEM_NUM = 11
 MINSUP = 0.144
 
+#Node class of the hashtree
 class Node:
     def __init__(self):
         self.leaf_node = False
@@ -20,9 +21,8 @@ class Node:
         self.level = 0  #Level in the hash tree
         self.index = []
 
-
-
 class Apriori:
+    #Data file can be set manually
     def __init__(self,data_file=DEFAULT_SOURECE_DIR):
         #Each element corrosponds to a list
         self.transactions_list = []
@@ -45,6 +45,7 @@ class Apriori:
                 #Record the index of value
                 self.transactions_list.append(item_list) # Look like List<List>
 
+    #Generate 1-freqset
     def get_freq1_itemset(self):
         item_counter = [0]*ITEM_NUM
         for item_list in self.transactions_list:
@@ -57,6 +58,7 @@ class Apriori:
                 set_list = []
                 set_list.append(index)
                 single_freq_set.append(set_list)
+                self.freq_counter[tuple(set_list)]=num
         single_freq_set.sort()
         return single_freq_set
 
@@ -66,9 +68,7 @@ class Apriori:
             parent_node =root
             for sub_index, item in enumerate(sub_list):
                 hash_value = int(item)%degree
-             #   children = parent_node.children_list.get(hash_value,[])
                 if not hash_value in parent_node.children_list:
-                    print 'not children'
                     node = Node()
                     node.level = sub_index + 1 #Level increase from 1 by 1
                     parent_node.children_list[hash_value] = node  #save the canidate set index
@@ -85,30 +85,17 @@ class Apriori:
 
 
     def __explore_hashtree(self,transaction,root,prefix_list=[],degree=DEFALUT_HASHTREE_DEGREE): #recursive invokation
-       # print '*************************hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh**************************'
         level,length = len(prefix_list)+1,len(transaction) # level,length is set 0 at first
         gen_transaction = transaction[:]
         for item in  transaction[:len(transaction)-self.k+level]:
             current_child = root.children_list.get(int(item)%degree,[])
             if not current_child:
-                print '----------------'
-                print item
                 #break
                 continue
             gen_prefix_list = prefix_list[:]
             gen_transaction.remove(item) #Pop the 1st element always
-            #print 'transaction'
-            #print transaction[:len(transaction)-self.k+level]
-            #print 'gen_transaction'
-            #print gen_transaction
             gen_prefix_list.append(item)
-           # print 'prefix_list'
-           # print gen_prefix_list
             if current_child.leaf_node:
-            #    print 'hash_tree'
-            #    print gen_prefix_list
-            #    print 'index'
-            #    print current_child.index
                 if gen_prefix_list in current_child.index:
                     gen_prefix_tuple = tuple(gen_prefix_list)
                     if self.freq_counter.get(gen_prefix_tuple,-1)==-1:#key 可以是list吗
@@ -125,14 +112,14 @@ class Apriori:
 
     def support_count(self,root):
         #invoke explore_hashtree
-        cout = 0
         for transaction in self.transactions_list:
-           # print cout
-           # print '*********************'
-          #  print transaction
             self.__explore_hashtree(transaction,root)
-           # print self.freq_counter
-            cout += 1
+        threshold = MINSUP*len(self.transactions_list)*1.0
+        length = len(self.freq_set[len(self.freq_set)-1][0])
+        freq_set = [list(key) for key, value in self.freq_counter.items() if value >= threshold and len(key)>length]
+        #freq_set
+        freq_set.sort()
+        self.freq_set.append(freq_set)
 
     def generate_candinate_set(self,freq_set):
         length = len(freq_set)
@@ -160,23 +147,16 @@ class Apriori:
     def prune(self,candidate_set):
         temp_set = candidate_set
         k = len(candidate_set[0])
-       # print str(k)
         for index, item_set in enumerate(candidate_set):
-            #print '456'
-      #      print '   '
             candidate_flag = True
-            ###############################
             remove_last_set = item_set[:]
-     #       print remove_last_set
             remove_last_set.pop(len(remove_last_set)-1)
             remove_last_set.pop(len(remove_last_set)-1) #zuihou 2 ge bu jiaru le, meibiyao
             for sub_index,item in enumerate(remove_last_set):
                 sub_set = item_set[:]
                 sub_set.pop(sub_index)
                 sub_set.sort()
-    #            print sub_set
                 if not sub_set in self.freq_set[k-2]:
-             #       print '123'
                     candidate_flag = False
                     break
             if not candidate_flag:
@@ -184,33 +164,48 @@ class Apriori:
                 continue
         return temp_set
 
+class Apriori_run:
+    def __init__(self):
+        self.alg = Apriori()
+        self.alg.read_from_file()
+
+    def run(self):
+        self.alg.freq_set.insert(0,self.alg.get_freq1_itemset())
+        k = 1
+        while k<=len(self.alg.freq_set):
+            prune_set = []
+            candidate_set = self.alg.generate_candinate_set(self.alg.freq_set[k-1])
+            if candidate_set:
+                prune_set = self.alg.prune(candidate_set)
+            if prune_set:
+                self.alg.set_candiate_set(prune_set)
+                root = self.alg.construct_hashtree(prune_set)
+                self.alg.support_count(root)
+                k += 1
+            else:
+                break
+
+    def print_result(self):
+        result = []
+        for item_list in self.alg.freq_set:
+            for freq_item in item_list:
+                result.append(freq_item)
+        result.sort()
+        if os.path.isfile('result.txt'):
+            os.remove('result.txt')
+        with open('result.txt','a') as f:
+            for item in result:
+                final_item = [element+1 for element in item]
+                freq = round(self.alg.freq_counter[tuple(item)]*1.0/len(self.alg.transactions_list),3)
+                format_str = str(tuple(final_item)).lstrip('(').rstrip(')').rstrip(',')
+                f.write(format_str.ljust(8)+'       '+str(freq)+'\n')
 
 
 if __name__=='__main__':
-    alg = Apriori()
-    alg.read_from_file()
-    alg.freq_set.insert(0,alg.get_freq1_itemset())
-    #for item, num in enumerate(alg.freq_set[0]):
-    #    print str(item)+' '+str(num)
-
-    candidate_set = alg.generate_candinate_set(alg.freq_set[0])
-    for index, list in enumerate(candidate_set):
-        print list
-    prune_set = alg.prune(candidate_set)
-    alg.set_candiate_set(prune_set)
-    root = alg.construct_hashtree(prune_set)
-    alg.support_count(root)
-    print alg.freq_counter
-   # print alg.k
-
-
-
-
-
-
-
-
-
+    process = Apriori_run()
+    process.run()
+    process.print_result()
+    print 'Conduct successfully'
 
 
 
